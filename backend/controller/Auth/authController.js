@@ -4,28 +4,38 @@ const bcrypt = require('bcryptjs');
 
 const register = async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, phonenumber } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Email and password are required' });
-    }
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    if (!email || !password || !name || !phonenumber) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Name, email, phone number, and password are required' 
+      });
+    }    // Check if user already exists
+    const existingUser = await User.findOne({ 
+      $or: [
+        { email },
+        { phonenumber }
+      ]
+    });
     
     if (existingUser) {
-      return res.status(400).json({ success: false, message: 'User with this email already exists' });
+      if (existingUser.email === email) {
+        return res.status(400).json({ success: false, message: 'User with this email already exists' });
+      }
+      if (existingUser.phonenumber === phonenumber) {
+        return res.status(400).json({ success: false, message: 'User with this phone number already exists' });
+      }
     }
 
     // Hash the password
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Create new user
+    const hashedPassword = await bcrypt.hash(password, salt);    // Create new user
     const user = new User({
       email,
       password: hashedPassword,
-      name: name || '',
+      name,
+      phonenumber,
     });
 
     await user.save();
@@ -35,9 +45,7 @@ const register = async (req, res) => {
       { id: user._id, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
-    );
-
-    return res.status(201).json({
+    );    return res.status(201).json({
       success: true,
       message: 'User registered successfully',
       data: {
@@ -45,7 +53,8 @@ const register = async (req, res) => {
         user: {
           id: user._id,
           name: user.name,
-          email: user.email
+          email: user.email,
+          phonenumber: user.phonenumber
         }
       }
     });

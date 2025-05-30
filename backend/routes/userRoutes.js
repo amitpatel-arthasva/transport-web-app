@@ -1,17 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const authenticate = require('../middleware/authenticate');
+const { viewProfile, updateUser } = require('../controller/userController');
 
 // Protected route example
-router.get('/profile', authenticate, (req, res) => {
-  // req.user is available from the authenticate middleware
-  return res.status(200).json({
-    success: true,
-    message: 'Profile data retrieved successfully',
-    data: {
-      user: req.user
-    }
-  });
-});
+router.get('/profile', authenticate, viewProfile);
+
+// Update user profile
+router.put('/profile', authenticate, updateUser);
+
+
 
 module.exports = router;
