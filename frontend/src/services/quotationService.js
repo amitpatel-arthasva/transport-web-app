@@ -40,11 +40,22 @@ export const quotationService = {
       throw error.response?.data || error.message;
     }
   },
-
   // Delete a quotation
   deleteQuotation: async (id) => {
     try {
       const response = await api.delete(`/quotation/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Generate PDF for a quotation
+  generateQuotationPdf: async (id) => {
+    try {
+      const response = await api.get(`/quotation/${id}/generate-pdf`, {
+        responseType: 'blob'
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;

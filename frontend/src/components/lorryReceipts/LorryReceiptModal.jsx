@@ -10,6 +10,7 @@ import Step4FreightDetails from './steps/Step4FreightDetails';
 
 const LorryReceiptModal = ({ isOpen, onClose, onSubmit, lorryReceipt, mode }) => {
   const toast = useToast();
+  const [scrollToTopFn, setScrollToTopFn] = useState(null);
 
   const [formData, setFormData] = useState({
     lorryReceiptNumber: '',
@@ -262,10 +263,13 @@ const LorryReceiptModal = ({ isOpen, onClose, onSubmit, lorryReceipt, mode }) =>
         return false;
     }
   };
-
   const handleNext = () => {
     if (validateStep(currentStep)) {
       setCurrentStep(prev => Math.min(prev + 1, 4));
+      // Scroll to top when moving to next step
+      if (scrollToTopFn) {
+        setTimeout(() => scrollToTopFn(), 100);
+      }
     } else {
       toast.error('Please fill in all required fields before proceeding.');
     }
@@ -337,14 +341,14 @@ const LorryReceiptModal = ({ isOpen, onClose, onSubmit, lorryReceipt, mode }) =>
     { number: 4, title: 'Freight & Invoice', subtitle: 'Freight and invoice details' }
   ];
 
-  return (
-    <Modal 
+  return (    <Modal 
       isOpen={isOpen} 
       onClose={onClose} 
-      size="4xl"
+      maxWidth="max-w-4xl"
       title={mode === 'create' ? 'Create Lorry Receipt' : 'Edit Lorry Receipt'}
       subtitle={steps[currentStep - 1].subtitle}
       showCloseButton={false}
+      onScrollToTop={setScrollToTopFn}
     >
       {/* Steps Indicator */}
       <div className="px-4 sm:px-6 py-3 sm:py-4 border-b bg-gray-50">

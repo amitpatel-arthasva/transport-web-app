@@ -3,16 +3,28 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDownload, faSpinner, faTimes } from '@fortawesome/free-solid-svg-icons';
 import Modal from '../common/Modal';
 import LorryReceiptTemplate from './LorryReceiptTemplate';
-import { generatePDF } from '../../utils/pdfGenerator';
+import { lorryReceiptService } from '../../services/lorryReceiptService';
 
 const LorryReceiptPDFModal = ({ isOpen, onClose, lorryReceiptData, lorryReceiptNumber }) => {
   const [isGenerating, setIsGenerating] = useState(false);
-
   const handleDownloadPDF = async () => {
     setIsGenerating(true);
     try {
-      const filename = `LR-${lorryReceiptNumber || 'Receipt'}-${new Date().toISOString().slice(0, 10)}.pdf`;
-      await generatePDF('lr-template-for-pdf', filename);
+      // Use server-side PDF generation for consistent filename format
+      const result = await lorryReceiptService.getLorryReceiptPdf(lorryReceiptData._id);
+      
+      if (result.success) {
+        // Create a temporary link to download the PDF
+        const link = document.createElement('a');
+        link.href = result.blobUrl;
+        link.download = result.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up the blob URL
+        window.URL.revokeObjectURL(result.blobUrl);
+      }
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Failed to generate PDF. Please try again.');

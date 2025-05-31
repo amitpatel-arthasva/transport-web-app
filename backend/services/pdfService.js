@@ -5,6 +5,65 @@ const { promisify } = require('util');
 const writeFileAsync = promisify(fs.writeFile);
 const unlinkAsync = promisify(fs.unlink);
 
+// Browser instance pool for reuse
+let browserInstance = null;
+let browserUseCount = 0;
+const MAX_BROWSER_USES = 50; // Restart browser after 50 uses to prevent memory leaks
+
+/**
+ * Get or create a shared browser instance
+ * @returns {Promise<Browser>} - Puppeteer browser instance
+ */
+const getBrowserInstance = async () => {
+  if (!browserInstance || !browserInstance.isConnected() || browserUseCount >= MAX_BROWSER_USES) {
+    if (browserInstance) {
+      try {
+        await browserInstance.close();
+      } catch (error) {
+        console.warn('Error closing browser instance:', error);
+      }
+    }
+    
+    const launchOptions = {
+      headless: 'new',
+      args: [
+        '--no-sandbox', 
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage', // Overcome limited resource problems
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+      ]
+    };
+    
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    }
+    
+    browserInstance = await puppeteer.launch(launchOptions);
+    browserUseCount = 0;
+  }
+  
+  browserUseCount++;
+  return browserInstance;
+};
+
+/**
+ * Clean up browser instance
+ */
+const closeBrowserInstance = async () => {
+  if (browserInstance) {
+    try {
+      await browserInstance.close();
+      browserInstance = null;
+      browserUseCount = 0;
+    } catch (error) {
+      console.warn('Error closing browser instance:', error);
+    }
+  }
+};
+
 /**
  * Generate a PDF from HTML content
  * @param {string} htmlContent - The HTML content to convert to PDF
@@ -22,26 +81,30 @@ const generatePdfFromHtml = async (htmlContent, options = {}) => {
   } = options;
 
   let browser = null;
+  let page = null;
+  
   try {
-    // Launch a new browser instance
-    browser = await puppeteer.launch({
-      headless: 'new', // Use the new headless mode
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
+    // Use shared browser instance
+    browser = await getBrowserInstance();
 
     // Create a new page
-    const page = await browser.newPage();
+    page = await browser.newPage();
     
-    // Set content to the page
+    // Optimize page settings for PDF generation
+    await page.setDefaultNavigationTimeout(30000);
+    await page.setDefaultTimeout(30000);
+    
+    // Set content to the page with optimized wait options
     await page.setContent(htmlContent, {
-      waitUntil: 'networkidle0' // Wait until network is idle (no more than 0 network connections for 500ms)
+      waitUntil: 'domcontentloaded' // Changed from networkidle0 for better performance
     });
 
-    // Generate PDF
+    // Generate PDF with optimized settings
     const defaultPdfOptions = {
       format: 'A4',
       printBackground: true,
-      margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' }
+      margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' },
+      preferCSSPageSize: false // Improve performance
     };
 
     const pdf = await page.pdf({
@@ -51,7 +114,7 @@ const generatePdfFromHtml = async (htmlContent, options = {}) => {
 
     // If outputPath is provided, save the PDF to the filesystem
     if (outputPath) {
-      const pdfPath = path.join(outputPath, `${filename}.pdf`);
+      const pdfPath = path.posix.join(outputPath, `${filename}.pdf`);
       await writeFileAsync(pdfPath, pdf);
       console.log(`PDF saved to ${pdfPath}`);
     }
@@ -61,8 +124,13 @@ const generatePdfFromHtml = async (htmlContent, options = {}) => {
     console.error('Error generating PDF:', error);
     throw error;
   } finally {
-    if (browser) {
-      await browser.close();
+    // Only close the page, not the browser
+    if (page) {
+      try {
+        await page.close();
+      } catch (error) {
+        console.warn('Error closing page:', error);
+      }
     }
   }
 };
@@ -75,19 +143,22 @@ const generatePdfFromHtml = async (htmlContent, options = {}) => {
  */
 const generatePdfFromUrl = async (url, options = {}) => {
   let browser = null;
+  let page = null;
+  
   try {
-    // Launch a new browser instance
-    browser = await puppeteer.launch({
-      headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
+    // Use shared browser instance
+    browser = await getBrowserInstance();
 
     // Create a new page
-    const page = await browser.newPage();
+    page = await browser.newPage();
     
-    // Navigate to the URL
+    // Optimize page settings
+    await page.setDefaultNavigationTimeout(30000);
+    await page.setDefaultTimeout(30000);
+    
+    // Navigate to the URL with optimized wait options
     await page.goto(url, {
-      waitUntil: 'networkidle0'
+      waitUntil: 'domcontentloaded' // Changed from networkidle0 for better performance
     });
 
     // Generate PDF with the same options as generatePdfFromHtml
@@ -95,14 +166,20 @@ const generatePdfFromUrl = async (url, options = {}) => {
       format: 'A4',
       printBackground: true,
       margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' },
+      preferCSSPageSize: false,
       ...options.pdfOptions
     });
   } catch (error) {
     console.error('Error generating PDF from URL:', error);
     throw error;
   } finally {
-    if (browser) {
-      await browser.close();
+    // Only close the page, not the browser
+    if (page) {
+      try {
+        await page.close();
+      } catch (error) {
+        console.warn('Error closing page:', error);
+      }
     }
   }
 };
@@ -145,5 +222,6 @@ const generatePdfFromTemplate = async (templateFn, data, options = {}) => {
 module.exports = {
   generatePdfFromHtml,
   generatePdfFromUrl,
-  generatePdfFromTemplate
+  generatePdfFromTemplate,
+  closeBrowserInstance // Export for cleanup
 };

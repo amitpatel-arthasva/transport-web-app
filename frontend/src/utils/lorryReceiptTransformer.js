@@ -181,9 +181,6 @@ export const transformLorryReceiptData = (lorryReceipt) => {
       disclaimer: "We are not responsible for any type of damages, Leakage, Fire & Shortages. Kindly Insured by Consignor or Consignee"
     };
 
-    // Log the transformed data to debug
-    console.log('Transformed lorry receipt data:', JSON.stringify(transformed, null, 2));
-    
     return transformed;
   } catch (error) {
     console.error('Error transforming lorry receipt data:', error);

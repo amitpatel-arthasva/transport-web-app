@@ -9,7 +9,8 @@ import {
   faFileAlt,
   faCalendarAlt,
   faBuilding,
-  faSpinner
+  faSpinner,
+  faDownload
 } from '@fortawesome/free-solid-svg-icons';
 import quotationService from '../services/quotationService';
 import Layout from '../components/common/Layout';
@@ -30,6 +31,7 @@ const Quotations = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedQuotation, setSelectedQuotation] = useState(null);
   const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState({});
   // Debounced search term
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   
@@ -73,7 +75,10 @@ const Quotations = () => {
       }
     } catch (error) {
       console.error('Error fetching quotations:', error);
-      toast.error('Failed to fetch quotations. Please try again.');
+       // Only show individual error toast for non-connection errors
+      if (error.response && error.response.status < 500) {
+        toast.error('Failed to fetch lorry receipts. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -105,8 +110,7 @@ const Quotations = () => {
       console.error('Error fetching quotation details:', error);
       toast.error('Failed to fetch quotation details. Please try again.');
     }
-  };
-  const handleDeleteQuotation = async (quotationId) => {
+  };  const handleDeleteQuotation = async (quotationId) => {
     setConfirmDialog({
       isOpen: true,
       title: 'Delete Quotation',
@@ -125,6 +129,37 @@ const Quotations = () => {
         }
       }
     });
+  };  const handleDownloadPdf = async (quotationId, companyName) => {
+    try {
+      setIsGeneratingPdf(prev => ({ ...prev, [quotationId]: true }));
+      
+      const pdfBlob = await quotationService.generateQuotationPdf(quotationId);
+      
+      // Create download link
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Generate filename similar to QuotationViewModal
+      const shortId = quotationId.slice(-6).toUpperCase(); // Get last 6 characters
+      const quotationNumber = `QUO-${shortId}`;
+      const cleanCompanyName = (companyName || 'Unknown').replace(/[^a-zA-Z0-9]/g, '_');
+      link.download = `${quotationNumber}_${cleanCompanyName}.pdf`;
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('PDF downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast.error('Failed to download PDF. Please try again.');
+    } finally {
+      setIsGeneratingPdf(prev => ({ ...prev, [quotationId]: false }));
+    }
   };
   const handleModalSubmit = async (quotationData) => {
     try {
@@ -241,14 +276,23 @@ const Quotations = () => {
                       <div className="flex justify-between items-start mb-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(quotation)}`}>
                           {getStatusText(quotation)}
-                        </span>
-                        <div className="flex gap-2">
+                        </span>                        <div className="flex gap-2">
                           <button
                             onClick={() => handleViewQuotation(quotation._id)}
                             className="text-primary-400 hover:text-primary-300 p-1 transition-colors"
                             title="View Details"
                           >
                             <FontAwesomeIcon icon={faEye} />
+                          </button>                          <button
+                            onClick={() => handleDownloadPdf(quotation._id, quotation.quoteToCompany?.companyName)}
+                            disabled={isGeneratingPdf[quotation._id]}
+                            className="text-green-600 hover:text-green-800 p-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={isGeneratingPdf[quotation._id] ? "Generating PDF..." : "Download PDF"}
+                          >
+                            <FontAwesomeIcon 
+                              icon={isGeneratingPdf[quotation._id] ? faSpinner : faDownload} 
+                              className={isGeneratingPdf[quotation._id] ? "animate-spin" : ""} 
+                            />
                           </button>
                           <button
                             onClick={() => handleEditQuotation(quotation)}

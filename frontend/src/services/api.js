@@ -1,5 +1,8 @@
 import axios from 'axios';
 
+const ENV_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// const ENV_API_BASE_URL = 'http://localhost:5000/api'; // Fallback for development
+
 // Connection state management
 let isServerUnreachable = false;
 let lastServerErrorTime = 0;
@@ -8,8 +11,7 @@ const SERVER_ERROR_DEBOUNCE_MS = 30000; // 30 seconds debounce
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: 'http://192.168.0.101:5000/api',
-  timeout: 10000,
+  baseURL: ENV_API_BASE_URL ,
   headers: {
     'Content-Type': 'application/json',
   },

@@ -6,7 +6,8 @@ const {
   getQuotations,
   getQuotationById,
   updateQuotation,
-  deleteQuotation
+  deleteQuotation,
+  generateQuotationPdf
 } = require('../controller/Features/quotationController');
 
 // All quotation routes require authentication
@@ -26,5 +27,8 @@ router.put('/:id', updateQuotation);
 
 // DELETE /api/quotation/:id - Delete a specific quotation
 router.delete('/:id', deleteQuotation);
+
+// GET /api/quotation/:id/generate-pdf - Generate PDF for a specific quotation
+router.get('/:id/generate-pdf', generateQuotationPdf);
 
 module.exports = router;

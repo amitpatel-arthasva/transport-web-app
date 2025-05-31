@@ -20,6 +20,7 @@ const Invoices = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState({});
   
   // Debounced search term
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -70,14 +71,17 @@ const Invoices = () => {
 
   useEffect(() => {
     fetchInvoices();
-  }, [fetchInvoices]);
-  const handleDownloadPdf = async (id, invoiceNumber) => {
-    try {
-      await invoiceService.downloadInvoicePdf(id, `Invoice-${invoiceNumber}.pdf`);
+  }, [fetchInvoices]);  const handleDownloadPdf = async (id) => {    try {
+      setIsGeneratingPdf(prev => ({ ...prev, [id]: true }));
+      
+      // Let the backend provide the proper filename based on actual invoice number
+      await invoiceService.downloadInvoicePdf(id);
       success('Invoice PDF downloaded successfully');
     } catch (err) {
       error('Failed to download invoice PDF');
       console.error('Error downloading PDF:', err);
+    } finally {
+      setIsGeneratingPdf(prev => ({ ...prev, [id]: false }));
     }
   };
 
@@ -144,14 +148,16 @@ const Invoices = () => {
                             : 'bg-yellow-100 text-yellow-800'
                         }`}>
                           {invoice.status || 'pending'}
-                        </span>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleDownloadPdf(invoice.id, invoice.invoiceNumber)}
-                            className="text-primary-400 hover:text-primary-300 p-1 transition-colors"
-                            title="Download PDF"
+                        </span>                        <div className="flex gap-2">                          <button
+                            onClick={() => handleDownloadPdf(invoice.id)}
+                            disabled={isGeneratingPdf[invoice.id]}
+                            className="text-primary-400 hover:text-primary-300 p-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={isGeneratingPdf[invoice.id] ? "Generating PDF..." : "Download PDF"}
                           >
-                            <FontAwesomeIcon icon={faDownload} />
+                            <FontAwesomeIcon 
+                              icon={isGeneratingPdf[invoice.id] ? faSpinner : faDownload} 
+                              className={isGeneratingPdf[invoice.id] ? "animate-spin" : ""} 
+                            />
                           </button>
                         </div>
                       </div>

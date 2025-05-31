@@ -48,9 +48,7 @@ export const lorryReceiptService = {
     } catch (error) {
       throw error.response?.data || error.message;
     }
-  },
-
-  // Get PDF for lorry receipt (server-side generation)
+  },  // Get PDF for lorry receipt (server-side generation)
   getLorryReceiptPdf: async (id) => {
     try {
       // Using blob response type to handle PDF data
@@ -60,13 +58,27 @@ export const lorryReceiptService = {
       
       // Create a blob URL and trigger download
       const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(blob);      // Extract filename from Content-Disposition header set by backend
+      let filename = 'lorry-receipt.pdf'; // Default fallback
+      const contentDisposition = response.headers['content-disposition'];
       
-      // Return the blob URL for downloading or opening in a new tab
+      if (contentDisposition) {
+        // More robust regex to handle different Content-Disposition formats
+        const filenameMatch = contentDisposition.match(/filename[*]?=([^;]+)/);
+        if (filenameMatch && filenameMatch[1]) {
+          // Remove quotes if present and ensure .pdf extension
+          let extractedFilename = filenameMatch[1].replace(/['"]/g, '').trim();
+          if (!extractedFilename.endsWith('.pdf')) {
+            extractedFilename += '.pdf';
+          }
+          filename = extractedFilename;
+        }
+      }
+      
       return { 
         success: true,
         blobUrl: url,
-        filename: `LorryReceipt-${id}.pdf` 
+        filename: filename 
       };
     } catch (error) {
       throw error.response?.data || error.message;

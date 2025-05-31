@@ -9,7 +9,8 @@ import {
   faFileAlt,
   faCalendarAlt,
   faTruck,
-  faSpinner
+  faSpinner,
+  faDownload
 } from '@fortawesome/free-solid-svg-icons';
 import lorryReceiptService from '../services/lorryReceiptService';
 import Layout from '../components/common/Layout';
@@ -29,6 +30,7 @@ const LorryReceipts = () => {
   const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState({});
   // Debounced search term
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   
@@ -159,9 +161,34 @@ const LorryReceipts = () => {
           console.error('Error deleting lorry receipt:', error);
           toast.error('Failed to delete lorry receipt. Please try again.');
         }
-      }
-    });
+      }    });
   };
+  const handleDownloadPDF = async (lorryReceiptId) => {
+    try {
+      setIsGeneratingPdf(prev => ({ ...prev, [lorryReceiptId]: true }));
+      
+      const result = await lorryReceiptService.getLorryReceiptPdf(lorryReceiptId);
+      
+      // Create a temporary link and trigger download
+      const link = document.createElement('a');
+      link.href = result.blobUrl;
+      link.download = result.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the blob URL
+      window.URL.revokeObjectURL(result.blobUrl);
+      
+      toast.success('PDF downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast.error('Failed to download PDF. Please try again.');
+    } finally {
+      setIsGeneratingPdf(prev => ({ ...prev, [lorryReceiptId]: false }));
+    }
+  };
+  
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-IN');
@@ -251,14 +278,23 @@ const LorryReceipts = () => {
                     <div className="flex justify-between items-start mb-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(lorryReceipt.status)}`}>
                         {lorryReceipt.status}
-                      </span>
-                      <div className="flex gap-2">
+                      </span>                      <div className="flex gap-2">
                         <button
                           onClick={() => handleViewLorryReceipt(lorryReceipt._id)}
                           className="text-primary-400 hover:text-primary-300 p-1 transition-colors"
                           title="View Details"
                         >
                           <FontAwesomeIcon icon={faEye} />
+                        </button>                        <button
+                          onClick={() => handleDownloadPDF(lorryReceipt._id)}
+                          disabled={isGeneratingPdf[lorryReceipt._id]}
+                          className="text-green-600 hover:text-green-700 p-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={isGeneratingPdf[lorryReceipt._id] ? "Generating PDF..." : "Download PDF"}
+                        >
+                          <FontAwesomeIcon 
+                            icon={isGeneratingPdf[lorryReceipt._id] ? faSpinner : faDownload} 
+                            className={isGeneratingPdf[lorryReceipt._id] ? "animate-spin" : ""} 
+                          />
                         </button>
                         <button
                           onClick={() => handleEditLorryReceipt(lorryReceipt)}

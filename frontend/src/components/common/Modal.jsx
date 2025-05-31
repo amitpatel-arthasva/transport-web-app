@@ -34,11 +34,37 @@ const Modal = ({
   title,
   subtitle,
   showCloseButton = true,
-  className = ""
+  className = "",
+  onScrollToTop
 }) => {
   const [animation, setAnimation] = useState(false);
-  const [backdropAnimation, setBackdropAnimation] = useState(false);
-  const modalContentRef = useRef(null);
+  const [backdropAnimation, setBackdropAnimation] = useState(false);  const modalContentRef = useRef(null);
+  const scrollableContentRef = useRef(null);
+  const scrollToTop = useCallback(() => {
+    if (scrollableContentRef.current) {
+      // First try to scroll the modal's content area
+      scrollableContentRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+      
+      // Also find and scroll any nested scrollable elements
+      const nestedScrollables = scrollableContentRef.current.querySelectorAll('.overflow-y-auto');
+      nestedScrollables.forEach(element => {
+        element.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      });
+    }
+  }, []);
+
+  // Expose scrollToTop function to parent component
+  useEffect(() => {
+    if (onScrollToTop) {
+      onScrollToTop(scrollToTop);
+    }
+  }, [onScrollToTop, scrollToTop]);
 
   const handleClose = useCallback(() => {
     setBackdropAnimation(false);
@@ -143,9 +169,11 @@ const Modal = ({
               )}
             </div>
           )}
-          
-          {/* Content */}
-          <div className={`custom-scrollbar overflow-y-auto flex-1 ${title || showCloseButton ? '' : 'h-full'}`}>
+            {/* Content */}
+          <div 
+            ref={scrollableContentRef}
+            className={`custom-scrollbar overflow-y-auto flex-1 ${title || showCloseButton ? '' : 'h-full'}`}
+          >
             {children}
           </div>
         </div>

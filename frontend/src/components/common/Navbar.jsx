@@ -241,9 +241,7 @@ const Navbar = () => {
             <div className="text-white font-medium">
               <span className="text-md">{currentPage}</span>
             </div>
-          )}
-
-          {/* User Name Display - visible on desktop */}
+          )}          {/* User Name Display - visible on desktop */}
           <div className="text-white font-medium">
             <span className="text-sm">Welcome, {user?.name || 'User'}</span>
           </div>
@@ -369,10 +367,9 @@ const Navbar = () => {
             {/* Mobile Account Links */}
           <div className={`pt-6 border-t border-gray-700 w-2/3 flex flex-col items-center space-y-4 transform transition-all duration-500 ease-out ${
             isMobileMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-20 opacity-0'
-          }`} style={{ transitionDelay: '200ms' }}>
-            {/* User Name Display - Mobile */}
+          }`} style={{ transitionDelay: '200ms' }}>        		   {/* User Name Display - Mobile */}
             <div className="text-white text-center">
-              <span className="text-sm font-medium">Welcome, {user?.name || 'User'}</span>
+              <span className="text-sm font-medium">Welcome, {user?.name}</span>
             </div>
             <MobileNavLink to="/profile" text="Profile" icon={faCog} onClick={() => setIsMobileMenuOpen(false)} />
             <MobileNavLink 

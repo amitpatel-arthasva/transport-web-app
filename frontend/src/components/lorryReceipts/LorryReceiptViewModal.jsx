@@ -287,7 +287,8 @@ const LorryReceiptViewModal = ({ isOpen, onClose, lorryReceipt }) => {
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Notes</h3>
             <p className="text-sm text-gray-700">{lorryReceipt.notes}</p>
           </div>
-        )}        {/* Action Buttons */}
+        )}        
+		{/* Action Buttons */}
         <div className="flex justify-between items-center mt-6 pt-4 border-t">
           <button
             onClick={handleDownloadPDF}

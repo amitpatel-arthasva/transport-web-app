@@ -36,17 +36,16 @@ export const AuthProvider = ({ children }) => {
 
     initializeAuth();
   }, []);
-
   const login = async (credentials) => {
     const response = await authService.login(credentials);
-    setUser(response.user);
+    setUser(response.data.user);
     setIsAuthenticated(true);
     return response;
   };
 
   const register = async (userData) => {
     const response = await authService.register(userData);
-    setUser(response.user);
+    setUser(response.data.user);
     setIsAuthenticated(true);
     return response;
   };

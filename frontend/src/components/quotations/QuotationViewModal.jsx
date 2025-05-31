@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faBuilding, 
@@ -7,12 +7,49 @@ import {
   faMoneyBill, 
   faCalendarAlt,
   faMapMarkerAlt,
-  faFileAlt
+  faFileAlt,
+  faDownload,
+  faSpinner
 } from '@fortawesome/free-solid-svg-icons';
 import Modal from '../common/Modal';
+import quotationService from '../../services/quotationService';
+import { useToast } from '../common/ToastSystem';
 
 const QuotationViewModal = ({ isOpen, onClose, quotation }) => {
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const toast = useToast();
+  
   if (!isOpen || !quotation) return null;
+
+  const handleDownloadPDF = async () => {
+    try {
+      setIsGeneratingPdf(true);
+      const pdfBlob = await quotationService.generateQuotationPdf(quotation._id);
+      
+      // Create download link
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+        // Generate filename with company name and quotation number
+      const companyName = quotation.quoteToCompany?.companyName || 'Unknown';
+      const shortId = quotation._id.slice(-6).toUpperCase(); // Get last 6 characters
+      const quotationNumber = quotation.quotationNumber || `QUO-${shortId}`;
+      const filename = `${quotationNumber}_${companyName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('PDF downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast.error('Failed to download PDF. Please try again.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -431,10 +468,20 @@ const QuotationViewModal = ({ isOpen, onClose, quotation }) => {
                 </div>
               </div>
             )}          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end items-center p-6 border-t bg-gray-50">
+        </div>        {/* Footer */}
+        <div className="flex justify-between items-center p-6 border-t bg-gray-50">
+          <button
+            onClick={handleDownloadPDF}
+            disabled={isGeneratingPdf}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isGeneratingPdf ? (
+              <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+            ) : (
+              <FontAwesomeIcon icon={faDownload} />
+            )}
+            {isGeneratingPdf ? 'Generating PDF...' : 'Download PDF'}
+          </button>
           <button
             onClick={onClose}
             className="bg-primary-400 hover:bg-primary-300 text-white px-6 py-2 rounded-lg transition-colors"

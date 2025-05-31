@@ -11,35 +11,66 @@ const invoiceService = {
       throw error.response?.data || error;
     }
   },
-
   // Generate and download invoice PDF
   generateInvoicePdf: async (id) => {
     try {
       const response = await api.get(`/invoice/${id}/pdf`, {
         responseType: 'blob'
       });
-      return response.data;
+      
+      // Create a blob URL for the PDF
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+        // Extract filename from Content-Disposition header set by backend
+      let filename = 'invoice.pdf'; // Default fallback
+      const contentDisposition = response.headers['content-disposition'];
+      console.log('Invoice - All response headers:', response.headers);
+      console.log('Invoice - Content-Disposition header:', contentDisposition);
+      
+      if (contentDisposition) {
+        // More robust regex to handle different Content-Disposition formats
+        const filenameMatch = contentDisposition.match(/filename[*]?=([^;]+)/);
+        console.log('Invoice - Filename match result:', filenameMatch);
+        if (filenameMatch && filenameMatch[1]) {
+          // Remove quotes if present and ensure .pdf extension
+          let extractedFilename = filenameMatch[1].replace(/['"]/g, '').trim();
+          if (!extractedFilename.endsWith('.pdf')) {
+            extractedFilename += '.pdf';
+          }
+          filename = extractedFilename;
+          console.log('Invoice - Final extracted filename:', filename);
+        }
+      } else {
+        console.log('Invoice - No Content-Disposition header found');
+      }
+      
+      return { 
+        success: true,
+        blobUrl: url,
+        filename: filename 
+      };
     } catch (error) {
       throw error.response?.data || error;
     }
-  },
-
-  // Download invoice PDF (helper method)
-  downloadInvoicePdf: async (id, filename) => {
+  },  // Download invoice PDF (helper method)
+  downloadInvoicePdf: async (id, customFilename) => {
     try {
-      const pdfBlob = await invoiceService.generateInvoicePdf(id);
+      const result = await invoiceService.generateInvoicePdf(id);
       
-      // Create blob URL and trigger download
-      const url = window.URL.createObjectURL(pdfBlob);
+      // Use the filename from backend or the custom one provided
+      const filename = customFilename || result.filename;
+      
+      // Create and trigger download
       const link = document.createElement('a');
-      link.href = url;
-      link.download = filename || `invoice-${id}.pdf`;
+      link.href = result.blobUrl;
+      link.download = filename;
+      
       document.body.appendChild(link);
       link.click();
       
       // Cleanup
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(result.blobUrl);
       
       return true;
     } catch (error) {
